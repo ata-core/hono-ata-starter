@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://hono.dev"><img src="https://raw.githubusercontent.com/honojs/hono/main/docs/images/hono-title.png" alt="Hono" width="300" /></a>
+</p>
+
 # hono-ata-starter
 
 A Hono API where one JSON Schema file gives the request validation, the TypeScript type of the handler's input, and the OpenAPI document. The schema is compiled ahead of time with [ata-validator](https://github.com/ata-core/ata-validator), so the deployed worker carries no validator engine, only the checks the schema asks for, and nothing in it calls `new Function`, which is what Cloudflare Workers and a strict Content-Security-Policy refuse.
