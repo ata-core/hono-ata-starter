@@ -1,0 +1,29 @@
+{
+  "name": "hono-ata-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Hono API where one JSON Schema gives the validation, the types and the OpenAPI document, compiled ahead of time with ata-validator",
+  "scripts": {
+    "schemas": "ata build 'schemas/*.schema.json' --out-dir src/generated --format esm --no-source",
+    "dev": "npm run schemas && wrangler dev",
+    "deploy": "npm run schemas && wrangler deploy",
+    "test": "npm run schemas && vitest run",
+    "doc": "npm run schemas && node --import tsx scripts/doc.ts",
+    "measure": "npm run schemas && node --import tsx scripts/measure.ts"
+  },
+  "dependencies": {
+    "hono": "^4.11.5",
+    "hono-openapi": "^1.3.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "ata-validator": "^1.47.0",
+    "esbuild": "^0.25.9",
+    "openapi-types": "^12.1.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "wrangler": "^4.40.0"
+  }
+}
