@@ -57,6 +57,10 @@ Validation of the two schemas costs 3.3 KB gzipped and 0.6 ms at start; the rest
 
 Drop `hono-openapi` and the `describeRoute` and `/openapi.json` lines; the validation and the types stay as they are, and the bundle shrinks by what hono-openapi weighs.
 
+## The same idea elsewhere
+
+[fastify-ata-starter](https://github.com/ata-core/fastify-ata-starter) does this on Fastify with no build step, and [mcp-ata-workers-starter](https://github.com/ata-core/mcp-ata-workers-starter) is an MCP server on Workers whose tool schemas are compiled the same way.
+
 ## License
 
 MIT
