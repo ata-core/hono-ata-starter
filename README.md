@@ -39,19 +39,32 @@ An invalid body answers `400` with `{ success: false, errors }`, one error per v
 
 ## What it costs
 
-Measured on this template with `npm run measure` (Apple M4 Pro, Node 25, esbuild for the bundle), against the same app with the route and the document but no validation:
+Measured on this template with `npm run measure` (Apple M4 Pro, Node 25, ata-validator 1.63.1, esbuild for the bundle), against the same app with the `/users` route and the document but no validation, and against the template before the import route:
 
-| | this template | same app, no validation |
+| | this template | `/users` route alone | same app, no validation |
+|---|---|---|---|
+| worker bundle, minified | 50.1 KB | 43.6 KB | 34.3 KB |
+| worker bundle, gzipped | 17.2 KB | 15.2 KB | 13.2 KB |
+| fresh process to the first validated response | 27.6 ms | 24.3 ms | 23.5 ms |
+
+Validation of the two schemas costs 2.0 KB gzipped and 0.8 ms at start; the import route and the `ata-validator/stream` entry it loads cost another 2.0 KB and 3.3 ms. The rest of every column is Hono and hono-openapi. The 400 path and the error list are in those 2.0 KB.
+
+## A bulk upload, validated as it arrives
+
+`POST /users/import` takes one user per line (`application/x-ndjson`) or a JSON array and validates each record the moment its last byte lands. The first record that fails answers 400 with its index from zero and its errors, and the rest of the body is not read: on Workers the request body is a Web `ReadableStream`, and `validateStream` from `ata-validator/stream` cancels it at the failure. The compiled module is handed over as `{ isValidObject: isValid, validate }`, the two methods a record stream calls, so the worker still carries no validator engine.
+
+Measured with `node --import tsx scripts/measure-stream.ts`, a 100 MB body of 1.6 million users generated on the fly, each case in a fresh process, against a handler that reads the whole body with `c.req.text()` and validates line by line:
+
+| | bad record at index 50 | all records valid |
 |---|---|---|
-| worker bundle, minified | 42.9 KB | 31.1 KB |
-| worker bundle, gzipped | 15.3 KB | 12.0 KB |
-| fresh process to the first validated response | 22.2 ms | 21.6 ms |
+| whole body first | 400 after 255 ms, +411 MB RSS | 200 in 579 ms, +508 MB RSS |
+| `/users/import` | 400 after 11 ms, +7 MB RSS | 200 in 549 ms, +82 MB RSS |
 
-Validation of the two schemas costs 3.3 KB gzipped and 0.6 ms at start; the rest of both columns is Hono and hono-openapi. The 400 path and the error list are in that 3.3 KB.
+The valid case is not faster, the same 1.6 million records are validated either way; what changes is that the process never holds the body. Not covered: a Workers runtime measurement (this is Node), and multipart uploads.
 
 ## Tests
 
-`test/app.test.ts` holds four things: a valid body is accepted and typed, an invalid one gets the error list, the document carries the schema as written (`description`, `format`, `minLength` included), and the bundle contains no `new Function` and stays small.
+`test/app.test.ts` holds seven things: a valid body is accepted and typed, an invalid one gets the error list, the document carries the schema as written (`description`, `format`, `minLength` included), an upload of one user per line and one as a JSON array are imported, a body that never ends is refused at its first bad record and read no further, and the bundle contains no `new Function` and stays small.
 
 ## Without the OpenAPI document
 

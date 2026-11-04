@@ -10,6 +10,8 @@ import userSchema from '../schemas/user.schema.json'
 import createdSchema from '../schemas/created.schema.json'
 import * as user from './generated/user.compiled.mjs'
 import type { User } from './generated/user.compiled.mjs'
+import { validateStream } from 'ata-validator/stream'
+import type { Validator } from 'ata-validator'
 
 // The JSON files are plain JSON Schema, which is what an OpenAPI 3.1 schema is.
 const asSchema = (schema: object) => schema as OpenAPIV3_1.SchemaObject
@@ -34,6 +36,36 @@ app.post(
   (c) => {
     const body = c.req.valid('json') // typed as User, from the schema
     return c.json({ id: crypto.randomUUID(), name: body.name }, 201)
+  }
+)
+
+// A bulk upload, validated as it arrives. The body is one user per line (or a
+// JSON array); each record is checked the moment its last byte lands, and the
+// first one that fails answers 400 before the rest of the body is read. On
+// Workers the request body is a Web ReadableStream, which validateStream reads
+// directly and cancels at the failure. The compiled module has the two
+// methods a record stream calls; the cast is because the published type names
+// the runtime Validator.
+const userRecords = { isValidObject: user.isValid, validate: user.validate } as unknown as Validator<unknown>
+
+app.post(
+  '/users/import',
+  describeRoute({
+    description: 'Create many users from one body, one JSON object per line or a JSON array',
+    requestBody: { required: true, content: { 'application/x-ndjson': { schema: asSchema(userSchema) }, 'application/json': { schema: { type: 'array', items: asSchema(userSchema) } } } },
+    responses: {
+      200: { description: 'How many users were imported', content: { 'application/json': { schema: { type: 'object', properties: { imported: { type: 'integer' } }, required: ['imported'] } } } },
+      400: { description: 'The first record that does not match the schema, by its index from zero' },
+    },
+  }),
+  async (c) => {
+    if (c.req.raw.body === null) return c.json({ success: false, record: 0, errors: [] }, 400)
+    const result = await validateStream(userRecords, c.req.raw.body)
+    if (!result.valid) {
+      const failure = result.errors[0]
+      return c.json({ success: false, record: failure.record, errors: failure.errors }, 400)
+    }
+    return c.json({ imported: result.records })
   }
 )
 
