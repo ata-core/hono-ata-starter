@@ -61,6 +61,26 @@ describe('users', () => {
     expect(pulls).toBeLessThan(10)
   })
 
+  it('serves the user schema as a plan the page validates with, and 304 when the page has it', async () => {
+    const res = await app.request('http://localhost/forms/user')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('application/json')
+    const etag = res.headers.get('etag')
+    expect(etag).toMatch(/^"[0-9a-f]{8}"$/)
+    const { fromPlan } = await import('ata-validator/plan')
+    const plan = (await res.json()) as import('ata-validator/plan').Plan
+    expect(plan.v).toBe(1)
+    const page = await fromPlan(plan)
+    const user = await import('../src/generated/user.compiled.mjs')
+    for (const d of [{ email: 'ada@example.com', name: 'Ada', age: 36 }, { email: 'not-an-email', name: '', age: 7 }, {}, { email: 'ada@example.com', name: 'Ada', extra: 1 }]) {
+      const a = page.validate(structuredClone(d)); const b = user.validate(structuredClone(d))
+      expect(a.valid).toBe(b.valid)
+      expect((a.errors as { instancePath: string }[]).map((e) => e.instancePath)).toEqual((b.errors as { instancePath: string }[]).map((e) => e.instancePath))
+    }
+    const again = await app.request('http://localhost/forms/user', { headers: { 'if-none-match': etag as string } })
+    expect(again.status).toBe(304)
+  })
+
   it('ships no validator engine: the worker bundle is small', async () => {
     const out = await build({ entryPoints: ['src/index.ts'], bundle: true, minify: true, format: 'esm', platform: 'browser', target: 'es2022', write: false, logLevel: 'silent' })
     const text = out.outputFiles[0].text

@@ -10,6 +10,7 @@ import userSchema from '../schemas/user.schema.json'
 import createdSchema from '../schemas/created.schema.json'
 import * as user from './generated/user.compiled.mjs'
 import type { User } from './generated/user.compiled.mjs'
+import userPlan from './generated/user.plan.json'
 import { validateStream } from 'ata-validator/stream'
 import type { Validator } from 'ata-validator'
 
@@ -68,6 +69,23 @@ app.post(
     return c.json({ imported: result.records })
   }
 )
+
+// The schema as a plan for the page, written at build time (scripts/plans.ts):
+// the page reads it with fromPlan from ata-validator/plan and validates as the
+// user types, with this worker's answers, carrying 6 KB instead of the
+// runtime compiler. The worker serves the JSON as it is; the ETag is the
+// plan's own hash, so a page that has it gets 304.
+const planText = JSON.stringify(userPlan)
+// FNV-1a over the text: a tag that changes exactly when the plan does, made
+// at startup with no crypto call.
+const planTag = '"' + ((): string => { let h = 0x811c9dc5; for (let i = 0; i < planText.length; i++) { h ^= planText.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 } return h.toString(16).padStart(8, '0') })() + '"'
+
+app.get('/forms/user', (c) => {
+  c.header('ETag', planTag)
+  c.header('Cache-Control', 'public, max-age=300')
+  if (c.req.header('if-none-match') === planTag) return c.body(null, 304)
+  return c.body(planText, 200, { 'Content-Type': 'application/json; charset=utf-8' })
+})
 
 app.get('/openapi.json', openAPIRouteHandler(app, {
   documentation: { info: { title: 'hono-ata-starter', version: '0.1.0', description: 'Validation, types and this document come from schemas/*.schema.json' } },

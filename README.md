@@ -62,9 +62,22 @@ Measured with `node --import tsx scripts/measure-stream.ts`, a 100 MB body of 1.
 
 The valid case is not faster, the same 1.6 million records are validated either way; what changes is that the process never holds the body. Not covered: a Workers runtime measurement (this is Node), and multipart uploads.
 
+## The schema as a plan for the page
+
+A page that validates the form as the user types does not need the runtime compiler. `npm run schemas` also writes `src/generated/user.plan.json` with `tablePlan` from `ata-validator/ir`, and `GET /forms/user` serves it as it is, with an ETag that changes exactly when the plan does. The page reads it with `fromPlan` from `ata-validator/plan`:
+
+```js
+import { fromPlan } from 'ata-validator/plan'
+
+const user = await fromPlan(await (await fetch('/forms/user')).json())
+user.validate(formData) // the worker's verdict, errors and filled defaults
+```
+
+The page carries the plan reader, 6.2 KB gzipped on ata-validator 1.63.1, plus the format checks a plan names; the runtime entry with the compiler is 56 KB. Nothing of `ata-validator/ir` reaches the worker: the plan is a build artifact, like the compiled module. A schema a plan cannot carry fails the build with its name (`scripts/plans.ts`); serve such a schema itself and validate it on the page with `new Validator`. The page and the worker agree on every document only on the same ata-validator version; the plan records the version that wrote it.
+
 ## Tests
 
-`test/app.test.ts` holds seven things: a valid body is accepted and typed, an invalid one gets the error list, the document carries the schema as written (`description`, `format`, `minLength` included), an upload of one user per line and one as a JSON array are imported, a body that never ends is refused at its first bad record and read no further, and the bundle contains no `new Function` and stays small.
+`test/app.test.ts` holds eight things: a valid body is accepted and typed, an invalid one gets the error list, the document carries the schema as written (`description`, `format`, `minLength` included), an upload of one user per line and one as a JSON array are imported, a body that never ends is refused at its first bad record and read no further, the plan the worker serves validates on the page as the worker does, and the bundle contains no `new Function` and stays small.
 
 ## Without the OpenAPI document
 

@@ -1,0 +1,1 @@
+{"v":1,"ata":"1.63.1","rich":false,"P":[[["tType","object"],["tReq",1,2],["tProps",{"id":[["tType","string"],["tLeaf","formatP","uuid","fmt_uuid","ATA3009",null]]}]]],"F":[],"rel":false,"sk":null,"uses":["fmt_uuid","formatP","tLeaf","tProps","tReq","tType","tablePlain"]}

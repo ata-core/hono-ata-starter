@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A Hono API where one JSON Schema gives the validation, the types and the OpenAPI document, compiled ahead of time with ata-validator",
   "scripts": {
-    "schemas": "ata build 'schemas/*.schema.json' --out-dir src/generated --format esm --no-source",
+    "schemas": "ata build 'schemas/*.schema.json' --out-dir src/generated --format esm --no-source && node --import tsx scripts/plans.ts",
     "dev": "npm run schemas && wrangler dev",
     "deploy": "npm run schemas && wrangler deploy",
     "test": "npm run schemas && vitest run",
