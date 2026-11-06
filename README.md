@@ -20,7 +20,7 @@ schemas/user.schema.json
 ```sh
 npm install
 npm run dev        # compiles the schemas, then wrangler dev
-npm test           # compiles, then the four tests below
+npm test           # compiles, then the eight tests below
 npm run doc        # prints the OpenAPI document
 npm run deploy     # compiles, then wrangler deploy
 ```
@@ -34,6 +34,8 @@ Change `schemas/user.schema.json`, run `npm run schemas`, and the validator, the
 - `validator('json', ...)` from Hono itself runs the compiled module's `validate`, and returns the body typed as `User`, so `c.req.valid('json')` is typed from the schema.
 - `describeRoute` takes the schema JSON as the request body and response schemas; JSON Schema is what an OpenAPI 3.1 schema is, so nothing is converted.
 - `/openapi.json` serves the document through `hono-openapi`.
+- `POST /users/import` validates an upload record by record as it arrives, with `validateStream` from `ata-validator/stream`, and stops at the first bad record.
+- `GET /forms/user` serves the schema as a plan, with an ETag, for a page that validates the form with `fromPlan` from `ata-validator/plan`.
 
 An invalid body answers `400` with `{ success: false, errors }`, one error per violation with `keyword`, `instancePath`, `schemaPath`, `params` and `message`.
 
