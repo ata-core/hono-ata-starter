@@ -81,6 +81,10 @@ The page carries the plan reader, 6.2 KB gzipped on ata-validator 1.63.1, plus t
 
 `test/app.test.ts` holds eight things: a valid body is accepted and typed, an invalid one gets the error list, the document carries the schema as written (`description`, `format`, `minLength` included), an upload of one user per line and one as a JSON array are imported, a body that never ends is refused at its first bad record and read no further, the plan the worker serves validates on the page as the worker does, and the bundle contains no `new Function` and stays small.
 
+## Why hono-openapi is held below 1.6.0
+
+`@standard-community/standard-json` 0.4.0 and 0.4.1 load zod's converters in a way esbuild cannot leave out, so a worker that has no zod installed fails to build (`Could not resolve "zod/v4/core"`). hono-openapi 1.6.0 depends on it, and `@standard-community/standard-openapi` 0.2.12 brings it in for every hono-openapi version. `package.json` keeps hono-openapi below 1.6.0 and pins standard-openapi to 0.2.11, for npm and pnpm, until a standard-json release builds without zod.
+
 ## Without the OpenAPI document
 
 Drop `hono-openapi` and the `describeRoute` and `/openapi.json` lines; the validation and the types stay as they are, and the bundle shrinks by what hono-openapi weighs.
